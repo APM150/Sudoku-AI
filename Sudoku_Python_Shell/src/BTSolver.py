@@ -47,8 +47,23 @@ class BTSolver:
         Return: a tuple of a dictionary and a bool. The dictionary contains all MODIFIED variables, mapped to their MODIFIED domain.
                 The bool is true if assignment is consistent, false otherwise.
     """
-    def forwardChecking ( self ):
-        return ({},False)
+    def forwardChecking(self):
+        modificationHistory = {}
+        for v in self.network.getVariables():
+            if not v.isAssigned():
+                neighbours = set()
+                for neighbour in self.network.getNeighborsOfVariable(v):
+                    if neighbour.isAssigned():
+                        neighbours.add(neighbour.getAssignment())
+                varIsModified = False
+                for value in neighbours:
+                    if v.domain.contains(value):
+                        self.trail.push(v)
+                        v.removeValueFromDomain(value)
+                        varIsModified = True
+                if varIsModified:
+                    modificationHistory[v] = v.domain
+        return (modificationHistory, self.network.isConsistent())
 
     # =================================================================
 	# Arc Consistency
@@ -164,7 +179,18 @@ class BTSolver:
                 The LCV is first and the MCV is last
     """
     def getValuesLCVOrder ( self, v ):
-        return None
+        values = {}     # {value: # of ruling out other values}
+        neighbors = self.network.getNeighborsOfVariable(v)
+        for value in v.domain.values:
+            numOfRuleOutValue = 0
+            for neighborVar in neighbors:
+                neighborDomain = neighborVar.domain.values
+                if value in neighborDomain:
+                    numOfRuleOutValue += 1
+            values.setdefault(value, numOfRuleOutValue)
+        return sorted(values, key=lambda x: values[x])
+
+
 
     """
          Optional TODO: Implement your own advanced Value Heuristic
