@@ -69,6 +69,7 @@ class BTSolver:
 	# Arc Consistency
 	# =================================================================
     def arcConsistency( self ):
+        result = {}
         assignedVars = []
         for c in self.network.constraints:
             for v in c.vars:
@@ -78,10 +79,15 @@ class BTSolver:
             av = assignedVars.pop(0)
             for neighbor in self.network.getNeighborsOfVariable(av):
                 if neighbor.isChangeable and not neighbor.isAssigned() and neighbor.getDomain().contains(av.getAssignment()):
+                    self.trail.push(neighbor)
                     neighbor.removeValueFromDomain(av.getAssignment())
+                    result[neighbor] = neighbor.domain
                     if neighbor.domain.size() == 1:
+                        self.trail.push(neighbor)
                         neighbor.assignValue(neighbor.domain.values[0])
                         assignedVars.append(neighbor)
+                        result[neighbor] = neighbor.domain
+        return (result, self.network.isConsistent())
 
     
     """
@@ -102,7 +108,25 @@ class BTSolver:
                 The bool is true if assignment is consistent, false otherwise.
     """
     def norvigCheck ( self ):
-        return ({}, False)
+        self.forwardChecking()
+        result = {}
+        for unit in self.network.constraints:
+            counter = {}
+            for var in unit.vars:
+                for value in var.domain.values:
+                    counter.setdefault(value, 0)
+                    counter[value] += 1
+            for value in counter:
+                if counter[value] == 1:
+                    for var in unit.vars:
+                        if var.domain.contains(value) and not var.isAssigned():
+                            self.trail.push(var)
+                            var.assignValue(value)
+                            result[var] = value
+                            break
+        return (result, self.network.isConsistent())
+
+
 
     """
          Optional TODO: Implement your own advanced Constraint Propagation
@@ -149,7 +173,37 @@ class BTSolver:
                 If there is only one variable, return the list of size 1 containing that variable.
     """
     def MRVwithTieBreaker ( self ):
-        return None
+        if self.getMRV() != None:
+            smallestDomain = self.getMRV().domain.size()
+            varsWithSmallestDomain = []
+            for v in self.network.variables:
+                if not v.isAssigned() and v.size() == smallestDomain:
+                    varsWithSmallestDomain.append(v)
+        else:
+            return [None]
+
+        if len(varsWithSmallestDomain) == 0 or len(varsWithSmallestDomain) == 1:
+            return varsWithSmallestDomain
+        else:
+            maxInvolvedConstraintNum = 0
+            varsWithMaxConsraints = []
+            for targetVar in varsWithSmallestDomain:
+                num = self.numOfUnassignedNeighbors(targetVar)
+                if num > maxInvolvedConstraintNum:
+                    maxInvolvedConstraintNum = num
+            for targetVar in varsWithSmallestDomain:
+                if self.numOfUnassignedNeighbors(targetVar) == maxInvolvedConstraintNum:
+                    varsWithMaxConsraints.append(targetVar)
+            return varsWithMaxConsraints
+
+    def numOfUnassignedNeighbors(self, var):
+        neighbors = self.network.getNeighborsOfVariable(var)
+        unassignedNeighbors = 0
+        for n in neighbors:
+            if not n.isAssigned():
+                unassignedNeighbors += 1
+        return unassignedNeighbors
+
 
     """
          Optional TODO: Implement your own advanced Variable Heuristic
