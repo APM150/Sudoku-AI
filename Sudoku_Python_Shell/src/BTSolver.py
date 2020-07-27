@@ -135,7 +135,7 @@ class BTSolver:
          your program into a tournament.
      """
     def getTournCC ( self ):
-        return False
+        return self.norvigCheck()
 
     # ==================================================================
     # Variable Selectors
@@ -212,7 +212,7 @@ class BTSolver:
          your program into a tournament.
      """
     def getTournVar ( self ):
-        return None
+        return self.MRVwithTieBreaker()[0]
 
     # ==================================================================
     # Value Selectors
@@ -253,7 +253,7 @@ class BTSolver:
          your program into a tournament.
      """
     def getTournVal ( self, v ):
-        return None
+        return self.getValuesLCVOrder(v)
 
     # ==================================================================
     # Engine Functions
